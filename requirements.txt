@@ -1,0 +1,5 @@
+aiogram==2.23.1
+httpx==0.25.2
+pytoniq==0.1.9
+pytoniq-core==0.1.14
+logger==1.4
