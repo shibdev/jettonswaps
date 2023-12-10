@@ -1,10 +1,19 @@
 import asyncio
+import datetime
+import hashlib
+import logging
+import time
+import typing
 from types import coroutine
+from collections import deque
 
+from pytoniq_core import Cell, Slice
 from pytoniq_core.tlb.block import ExtBlkRef
 
 from pytoniq.liteclient import LiteClient
+from pytoniq_core.tlb import Block, ValueFlow, ShardAccounts
 from pytoniq_core.tl import BlockIdExt
+from pytoniq.liteclient.balancer import LiteBalancer
 
 
 class BlockScanner:
@@ -20,39 +29,43 @@ class BlockScanner:
         self.client = client
         self.block_handler = block_handler
         self.shards_storage = {}
-        self.blks_queue = asyncio.Queue()
+        self.blks_dequeue = deque()
+        self.inited = False
 
     async def run(self):
         if not self.client.inited:
             raise Exception('should init client first')
         master_blk = self.mc_info_to_tl_blk(await self.client.get_masterchain_info())
-        shards = await self.client.get_all_shards_info(master_blk)
-        for shard in shards:
-            self.shards_storage[self.get_shard_id(shard)] = shard.seqno
-            await self.blks_queue.put(shard)
+        if not self.inited:
+            shards = await self.client.get_all_shards_info(master_blk)
+            for shard in shards:
+                self.shards_storage[self.get_shard_id(shard)] = shard.seqno
+                self.blks_dequeue.append(shard)
+            self.inited = True
 
         while True:
-            await self.blks_queue.put(master_blk)
+            self.blks_dequeue.append(master_blk)
 
             shards = await self.client.get_all_shards_info(master_blk)
             for shard in shards:
                 await self.get_not_seen_shards(shard)
                 self.shards_storage[self.get_shard_id(shard)] = shard.seqno
 
-            while not self.blks_queue.empty():
-                await self.block_handler(self.blks_queue.get_nowait())
+            while self.blks_dequeue:
+                await self.block_handler(self.blks_dequeue.pop())
 
-            master_blk = self.mc_info_to_tl_blk(
-                await self.client.wait_masterchain_seqno(
-                    seqno=master_blk.seqno + 1, timeout_ms=10000, schema_name='getMasterchainInfo', data={}
-                )
-            )
+            last_seqno = master_blk.seqno
+            while True:
+                new_master_blk = self.mc_info_to_tl_blk(await self.client.get_masterchain_info_ext())
+                if new_master_blk.seqno != last_seqno:
+                    master_blk = new_master_blk
+                    break
 
     async def get_not_seen_shards(self, shard: BlockIdExt):
         if self.shards_storage.get(self.get_shard_id(shard)) == shard.seqno:
             return []
         result = []
-        await self.blks_queue.put(shard)
+        self.blks_dequeue.append(shard)
         full_blk = await self.client.raw_get_block_header(shard)
         prev_ref = full_blk.info.prev_ref
         if prev_ref.type_ == 'prev_blk_info':  # only one prev block

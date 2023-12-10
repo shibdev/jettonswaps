@@ -1,5 +1,5 @@
 import asyncio
-from pytoniq import BlockIdExt, Address, LiteClient
+from pytoniq import BlockIdExt, Address, LiteBalancer
 from block_scanner import BlockScanner
 from aiogram import Bot
 from logger import logger
@@ -140,7 +140,7 @@ async def handle_block(block: BlockIdExt):
     except Exception as e:
         logger.error(f"Handle_block error: {e}")
 
-client = LiteClient.from_mainnet_config(ls_i=0, trust_level=2, timeout=200)
+client = LiteBalancer.from_mainnet_config(1)
 
 def build_trace(tr_hash: str, transactions_hashes: dict, traces: dict, result: list):
     result.append(transactions_hashes.get(tr_hash))
@@ -152,11 +152,12 @@ async def main():
     logger.info("Start")
     while True:
         try:
-            await client.connect()
-
+            await client.start_up()
             await BlockScanner(client=client, block_handler=handle_block).run()
-        except Exception as e:
-            logger.error(f"LiteServer error: {e}")
+        except asyncio.TimeoutError:
+            await client.close_all()
+            await asyncio.sleep(3)
+            continue
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

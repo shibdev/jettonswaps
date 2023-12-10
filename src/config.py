@@ -1,5 +1,5 @@
-TOKEN = 'YOUR_API_KEY_HERE'
-CHAT_ID = 0
+TOKEN = '6770249299:AAEwe1FJyF_t4NxOTybqd5upNb4Mjrdb8V4'
+CHAT_ID = 6037851294
 
 # JETTON ADDRESS
 addresses = [
@@ -75,7 +75,9 @@ token = {
 'jwbtc': "EQAdyJF9ZyU66XzCepZT6Dtt7RBFzxP7rBimRf8FN62Xbw6G",
 }
 
-flipped_token = {value: key for key, value in token.items()}
+flipped_token = {}
+for value, key in zip(token, addresses):
+    flipped_token[key] = value
 
 known_wallets = {
     "UQBMubUg_eg35keX91BElNjcy5e8p23Uj3SOEyv0tipNdOcz": "#ArbitrageBot1",
