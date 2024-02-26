@@ -1,5 +1,5 @@
 # jettonswaps
-Bot for detect jetton swaps(only swaps, not liquidity)
+Bot for detect jetton swaps (only swaps, not liquidity) at [DeDust.io](https://dedust.io/)
 
 ### Installing
 ```bash
