@@ -1,13 +1,19 @@
 import copy
-from pytoniq import Address
+from pytoniq import LiteClient, Address
 from logger import logger
 from functions import get_lp_price, get_json, put_json
 from config import token, flipped_token, known_wallets
 
-symbols = {"sold": "🔴", "bought": "🟢",
-           "withdraw": "💀", "deposit": "👛"}
 
-async def raw_to_userfriendly(client, raw_result, tx):
+symbols = {
+    "sold": "🔴",
+    "bought": "🟢",
+    "withdraw": "💀",
+    "deposit": "👛"
+}
+
+
+async def raw_to_userfriendly(client: LiteClient, raw_result: dict, tx: str) -> str:
     result = None
     price = None
     sell_or_buy = None
@@ -245,16 +251,6 @@ def init_raw_result(data):
 
     for i in raw_results:
         if all([bool(i["station"]), bool(i["amounts"][0]), bool(i["amounts"][1]), bool(i["who"]), bool(i["symbols"][0]), bool(i["symbols"][1])]):
-            # if not i["is_multi-hop"]:
-            #     if i["station"] == "bought":
-            #         i["amounts"][1] -= 0.2
-            #     if i["station"] == "sold":
-            #         i["amounts"][1] -= 0.105
-            #     if i["station"] == "deposit":
-            #         i["amounts"][1] -= 0.15
-            #     if i["station"] == "withdraw":
-            #         i["amounts"][1] -= 0.225
-            
             if i["symbols"][0] == i["symbols"][1]:
                 continue
 
